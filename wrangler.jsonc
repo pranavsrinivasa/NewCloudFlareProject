@@ -9,8 +9,7 @@
   "kv_namespaces": [
     {
       "binding": "KV_MEMORY",
-      "id": "mock-id-for-dev",
-      "preview_id": "mock-preview-id-for-dev"
+      "id": "ed95a52c8f2c4ea1a41a1ce33a85ac27"
     }
   ],
   "workflows": [

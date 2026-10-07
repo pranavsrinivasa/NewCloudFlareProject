@@ -1,4 +1,4 @@
-import { WorkflowEntrypoint, WorkflowStep, WorkflowEvent } from 'cloudflare:workers';
+﻿import { WorkflowEntrypoint, WorkflowStep, WorkflowEvent } from 'cloudflare:workers';
 
 type Env = {
   AI: any;
@@ -12,34 +12,41 @@ export class ResearchWorkflow extends WorkflowEntrypoint<Env, Params> {
   async run(event: WorkflowEvent<Params>, step: WorkflowStep) {
     const query = event.payload.query;
 
-    // Step 1: Gather Information
-    const news = await step.do('gather-news', async () => {
-      // Mock gathering news based on query
-      return `Recent news mentions positive growth and upcoming product launches related to ${query}. Financials show a 20% YoY revenue increase.`;
+    // Step 1: Gather real-time information via Web Search (DuckDuckGo Lite)
+    const searchResults = await step.do('web-search', async () => {
+      const formData = new URLSearchParams();
+      formData.append('q', query);
+      const res = await fetch('https://lite.duckduckgo.com/lite/', {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'User-Agent': 'Mozilla/5.0'
+        }
+      });
+      
+      const text = await res.text();
+      // Extract search snippets
+      const snippets = [];
+      const regex = /class="result-snippet">\s*(.*?)\s*<\/td>/g;
+      let match;
+      while ((match = regex.exec(text)) !== null && snippets.length < 5) {
+          snippets.push(match[1].replace(/<\/?[^>]+(>|$)/g, "")); // strip HTML tags
+      }
+      return snippets.length > 0 ? snippets.join('\n') : "No relevant search results found.";
     });
 
     // Step 2: Perform sentiment/risk analysis
     const analysis = await step.do('sentiment-analysis', async () => {
       const response = await this.env.AI.run('@cf/meta/llama-3.3-70b-instruct-fp8-fast', {
         messages: [
-          { role: 'system', content: 'You are a risk analyst. Perform a quick sentiment and risk analysis on the following data.' },
-          { role: 'user', content: news }
+          { role: 'system', content: 'You are a risk analyst. Perform a concise sentiment and risk analysis on the following real-time search data.' },
+          { role: 'user', content: searchResults }
         ]
       });
       return response.response;
     });
 
-    // Step 3: Synthesize Findings
-    const synthesis = await step.do('synthesize', async () => {
-      const response = await this.env.AI.run('@cf/meta/llama-3.3-70b-instruct-fp8-fast', {
-        messages: [
-          { role: 'system', content: 'You are an AI Research & Decision Agent. Synthesize the findings into a clear, risk-adjusted view.' },
-          { role: 'user', content: `Original Query: ${query}\n\nGathered News: ${news}\n\nRisk Analysis: ${analysis}` }
-        ]
-      });
-      return response.response;
-    });
-
-    return { synthesis };
+    return { searchResults, analysis };
   }
 }

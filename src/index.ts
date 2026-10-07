@@ -14,7 +14,6 @@ export default {
     if (request.method === 'POST' && url.pathname === '/api/chat') {
       const { message, conversationId } = await request.json();
 
-      // 1. Store memory in KV (100% Free)
       let history = [];
       try {
         const stored = await env.KV_MEMORY.get(conversationId, { type: 'json' });
@@ -23,7 +22,7 @@ export default {
       history.push({ role: 'user', content: message });
       await env.KV_MEMORY.put(conversationId, JSON.stringify(history));
 
-      const instanceId = \inv_\\;
+      const instanceId = `inv_${Date.now()}`;
       const workflowInstance = await env.RESEARCH_WORKFLOW.create({
         id: instanceId,
         params: { query: message }
@@ -35,7 +34,7 @@ export default {
 
       ctx.waitUntil((async () => {
         try {
-          await writer.write(encoder.encode(\data: \\n\n\));
+          await writer.write(encoder.encode(`data: ${JSON.stringify("Starting research workflow [" + instanceId + "]...")}\n\n`));
 
           let status;
           do {
@@ -44,31 +43,31 @@ export default {
           } while (status.status !== 'complete' && status.status !== 'errored' && status.status !== 'terminated');
 
           if (status.status !== 'complete') {
-            await writer.write(encoder.encode(\data: \\n\n\));
+            await writer.write(encoder.encode(`data: ${JSON.stringify("Workflow failed with status: " + status.status)}\n\n`));
             await writer.write(encoder.encode('data: "[DONE]"\n\n'));
             return;
           }
 
           const researchData = status.output;
-          await writer.write(encoder.encode(\data: \\n\n\));
+          await writer.write(encoder.encode(`data: ${JSON.stringify("Research complete! Synthesizing final answer...")}\n\n`));
 
           const responseStream = await env.AI.run('@cf/meta/llama-3.3-70b-instruct-fp8-fast', {
             messages: [
               { role: 'system', content: 'You are an AI Research & Decision Agent. Synthesize the findings into a clear, risk-adjusted view.' },
-              { role: 'user', content: \User query: \\n\nResearch Context:\n\\ }
+              { role: 'user', content: `User query: ${message}\n\nResearch Context:\n${JSON.stringify(researchData)}` }
             ],
             stream: true
           });
 
           for await (const chunk of responseStream) {
             if (chunk.response) {
-              await writer.write(encoder.encode(\data: \\n\n\));
+              await writer.write(encoder.encode(`data: ${JSON.stringify(chunk.response)}\n\n`));
             }
           }
 
           await writer.write(encoder.encode('data: "[DONE]"\n\n'));
         } catch (error) {
-          await writer.write(encoder.encode(\data: \\n\n\));
+          await writer.write(encoder.encode(`data: ${JSON.stringify("Error during processing.")}\n\n`));
           await writer.write(encoder.encode('data: "[DONE]"\n\n'));
         } finally {
           await writer.close();

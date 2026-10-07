@@ -59,13 +59,14 @@ export default {
             stream: true
           });
 
-          for await (const chunk of responseStream) {
-            if (chunk.response) {
-              await writer.write(encoder.encode(`data: ${JSON.stringify(chunk.response)}\n\n`));
-            }
+          // responseStream is a ReadableStream yielding Uint8Arrays in SSE format
+          const aiReader = responseStream.getReader();
+          while (true) {
+            const { done, value } = await aiReader.read();
+            if (done) break;
+            await writer.write(value);
           }
 
-          await writer.write(encoder.encode('data: "[DONE]"\n\n'));
         } catch (error) {
           await writer.write(encoder.encode(`data: ${JSON.stringify("Error during processing.")}\n\n`));
           await writer.write(encoder.encode('data: "[DONE]"\n\n'));

@@ -1,4 +1,4 @@
-export const HTML = `<!DOCTYPE html>
+﻿export const HTML = <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -62,35 +62,46 @@ export const HTML = `<!DOCTYPE html>
             botDiv.innerHTML = '<span class="thinking">Starting Workflow...</span>';
 
             try {
-                // 1. Kick off the Workflow and get an SSE stream directly from the Worker
                 const response = await fetch('/api/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ message: text, conversationId })
                 });
 
-                botDiv.innerHTML = ''; // clear thinking
+                botDiv.innerHTML = ''; 
 
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder();
 
+                let buffer = '';
                 while (true) {
                     const { done, value } = await reader.read();
                     if (done) break;
-                    const chunk = decoder.decode(value, { stream: true });
-                    // Basic parsing of SSE data chunks
-                    const lines = chunk.split('\\n');
+                    buffer += decoder.decode(value, { stream: true });
+                    
+                    let lines = buffer.split('\\n');
+                    buffer = lines.pop(); // keep the last incomplete line in buffer
+                    
                     for (const line of lines) {
+                        if (line.trim() === '') continue;
                         if (line.startsWith('data: ')) {
                             try {
-                                const data = JSON.parse(line.slice(6));
-                                if (data === '[DONE]') break;
-                                botDiv.textContent += data;
+                                const payload = line.slice(6).trim();
+                                if (payload === '[DONE]') break;
+                                const data = JSON.parse(payload);
+                                
+                                if (typeof data === 'string') {
+                                    botDiv.textContent += data + '\\n';
+                                } else if (data && data.response) {
+                                    botDiv.textContent += data.response;
+                                }
                                 messages.scrollTop = messages.scrollHeight;
                             } catch(e) {
-                                // Ignore unparseable (e.g. standard strings before stream)
+                                // Raw string output
                                 const raw = line.slice(6);
-                                if (!raw.startsWith('{')) botDiv.textContent += raw + '\\n';
+                                if (!raw.startsWith('{') && raw !== '[DONE]') {
+                                   botDiv.textContent += raw + '\\n';
+                                }
                             }
                         }
                     }
@@ -104,4 +115,4 @@ export const HTML = `<!DOCTYPE html>
         });
     </script>
 </body>
-</html>`;
+</html>;

@@ -10,8 +10,8 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "@cloudflare/workers-types": "^5.20261007.1",
+    "@cloudflare/workers-types": "^4.20250408.0",
     "typescript": "^7.0.2",
-    "wrangler": "^4.148.0"
+    "wrangler": "^3.114.17"
   }
 }

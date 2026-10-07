@@ -1,17 +1,22 @@
-﻿export const HTML = <!DOCTYPE html>
+﻿export const HTML = `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Research & Decision Agent</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f3f4f6; margin: 0; padding: 20px; display: flex; justify-content: center; height: 100vh; box-sizing: border-box; }
         .chat-container { width: 100%; max-width: 800px; background: white; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); display: flex; flex-direction: column; overflow: hidden; }
         .header { background: #2563eb; color: white; padding: 20px; text-align: center; font-size: 1.2rem; font-weight: bold; }
         .messages { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
-        .message { padding: 12px 16px; border-radius: 8px; max-width: 80%; line-height: 1.5; white-space: pre-wrap; }
+        .message { padding: 12px 16px; border-radius: 8px; max-width: 80%; line-height: 1.5; word-break: break-word; }
         .user { background: #2563eb; color: white; align-self: flex-end; border-bottom-right-radius: 0; }
-        .bot { background: #f3f4f6; color: #1f2937; align-self: flex-start; border-bottom-left-radius: 0; border: 1px solid #e5e7eb; }
+        .bot { background: #f3f4f6; color: #1f2937; align-self: flex-start; border-bottom-left-radius: 0; border: 1px solid #e5e7eb; width: 100%; }
+        .bot p:first-child { margin-top: 0; }
+        .bot p:last-child { margin-bottom: 0; }
+        .bot a { color: #2563eb; text-decoration: none; }
+        .bot a:hover { text-decoration: underline; }
         .input-area { padding: 20px; background: white; border-top: 1px solid #e5e7eb; display: flex; gap: 10px; }
         input { flex: 1; padding: 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 1rem; outline: none; }
         input:focus { border-color: #2563eb; }
@@ -40,10 +45,10 @@
         const btn = document.getElementById('send-btn');
         let conversationId = 'user-' + Date.now();
 
-        function addMessage(text, type) {
+        function addMessage(html, type) {
             const div = document.createElement('div');
             div.className = 'message ' + type;
-            div.textContent = text;
+            div.innerHTML = html;
             messages.appendChild(div);
             messages.scrollTop = messages.scrollHeight;
             return div;
@@ -58,8 +63,8 @@
             input.value = '';
             btn.disabled = true;
 
-            const botDiv = addMessage('', 'bot');
-            botDiv.innerHTML = '<span class="thinking">Starting Workflow...</span>';
+            const botDiv = addMessage('<span class="thinking">Starting Workflow...</span>', 'bot');
+            let fullText = '';
 
             try {
                 const response = await fetch('/api/chat', {
@@ -80,7 +85,7 @@
                     buffer += decoder.decode(value, { stream: true });
                     
                     let lines = buffer.split('\\n');
-                    buffer = lines.pop(); // keep the last incomplete line in buffer
+                    buffer = lines.pop(); 
                     
                     for (const line of lines) {
                         if (line.trim() === '') continue;
@@ -91,23 +96,25 @@
                                 const data = JSON.parse(payload);
                                 
                                 if (typeof data === 'string') {
-                                    botDiv.textContent += data + '\\n';
+                                    fullText += data + '\\n\\n';
+                                    botDiv.innerHTML = marked.parse(fullText);
                                 } else if (data && data.response) {
-                                    botDiv.textContent += data.response;
+                                    fullText += data.response;
+                                    botDiv.innerHTML = marked.parse(fullText);
                                 }
                                 messages.scrollTop = messages.scrollHeight;
                             } catch(e) {
-                                // Raw string output
                                 const raw = line.slice(6);
                                 if (!raw.startsWith('{') && raw !== '[DONE]') {
-                                   botDiv.textContent += raw + '\\n';
+                                   fullText += raw + '\\n';
+                                   botDiv.innerHTML = marked.parse(fullText);
                                 }
                             }
                         }
                     }
                 }
             } catch (err) {
-                botDiv.textContent = 'An error occurred while researching.';
+                botDiv.innerHTML = 'An error occurred while researching.';
             } finally {
                 btn.disabled = false;
                 input.focus();
@@ -115,4 +122,4 @@
         });
     </script>
 </body>
-</html>;
+</html>`;

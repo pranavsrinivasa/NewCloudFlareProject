@@ -53,13 +53,12 @@ export default {
 
           const responseStream = await env.AI.run('@cf/meta/llama-3.3-70b-instruct-fp8-fast', {
             messages: [
-              { role: 'system', content: 'You are an AI Research & Decision Agent. Synthesize the findings into a clear, risk-adjusted view.' },
+              { role: 'system', content: 'You are an AI Research & Decision Agent. Synthesize the findings into a clear, risk-adjusted view. Use Markdown formatting. **Crucially**, you MUST explicitly cite your sources by embedding clickable Markdown links (e.g. [Site Name](url)) using the sources provided in the Research Context.' },
               { role: 'user', content: `User query: ${message}\n\nResearch Context:\n${JSON.stringify(researchData)}` }
             ],
             stream: true
           });
 
-          // responseStream is a ReadableStream yielding Uint8Arrays in SSE format
           const aiReader = responseStream.getReader();
           while (true) {
             const { done, value } = await aiReader.read();

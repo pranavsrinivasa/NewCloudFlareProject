@@ -26,14 +26,19 @@ export class ResearchWorkflow extends WorkflowEntrypoint<Env, Params> {
       });
       
       const text = await res.text();
-      // Extract search snippets
+      
       const snippets = [];
-      const regex = /class="result-snippet">\s*(.*?)\s*<\/td>/g;
+      const regex = /<a[^>]*href="([^"]+)"[^>]*class='result-link'>([^<]+)<\/a>[\s\S]*?<td class='result-snippet'>\s*(.*?)\s*<\/td>/g;
+      
       let match;
       while ((match = regex.exec(text)) !== null && snippets.length < 5) {
-          snippets.push(match[1].replace(/<\/?[^>]+(>|$)/g, "")); // strip HTML tags
+          const url = match[1];
+          const title = match[2];
+          const snippetText = match[3].replace(/<\/?[^>]+(>|$)/g, "");
+          snippets.push(`Source: [${title}](${url})\nSnippet: ${snippetText}`);
       }
-      return snippets.length > 0 ? snippets.join('\n') : "No relevant search results found.";
+      
+      return snippets.length > 0 ? snippets.join('\n\n') : "No relevant search results found.";
     });
 
     // Step 2: Perform sentiment/risk analysis
